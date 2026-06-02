@@ -28,52 +28,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
       if (error) throw error
 
       if (data.user) {
-        // Try to fetch user data, but don't fail if it doesn't exist
-        try {
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', data.user.id)
-
-          if (userError) {
-            console.warn('User data fetch error:', userError)
-            // Create a basic user object from auth data
-            set({ 
-              user: {
-                id: data.user.id,
-                email: data.user.email,
-                full_name: data.user.user_metadata?.full_name || 'User',
-                role: 'student'
-              } as User, 
-              loading: false 
-            })
-          } else if (userData && userData.length > 0) {
-            set({ user: userData[0], loading: false })
-          } else {
-            // User exists in auth but not in users table
-            set({ 
-              user: {
-                id: data.user.id,
-                email: data.user.email,
-                full_name: data.user.user_metadata?.full_name || 'User',
-                role: 'student'
-              } as User, 
-              loading: false 
-            })
-          }
-        } catch (tableError) {
-          console.error('Error fetching user from table:', tableError)
-          // Still set user from auth data
-          set({ 
-            user: {
-              id: data.user.id,
-              email: data.user.email,
-              full_name: data.user.user_metadata?.full_name || 'User',
-              role: 'student'
-            } as User, 
-            loading: false 
-          })
+        // Use auth data directly - no database query
+        const userData: User = {
+          id: data.user.id,
+          email: data.user.email || '',
+          full_name: data.user.user_metadata?.full_name || 'User',
+          role: data.user.user_metadata?.role || 'student'
         }
+        set({ user: userData, loading: false })
       }
     } catch (error: any) {
       const errorMessage = error.message || 'Login failed'
@@ -91,6 +53,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         options: {
           data: {
             full_name: fullName,
+            role: 'student',
           },
         },
       })
@@ -98,25 +61,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
       if (error) throw error
 
       if (data.user) {
-        // Try to insert user record, but don't fail if table doesn't exist
-        try {
-          const { error: insertError } = await supabase.from('users').insert([
-            {
-              id: data.user.id,
-              email,
-              full_name: fullName,
-              role: 'student',
-            },
-          ])
-
-          if (insertError) {
-            console.warn('User insert error:', insertError)
-          }
-        } catch (tableError) {
-          console.warn('Error inserting user into table:', tableError)
+        const userData: User = {
+          id: data.user.id,
+          email: data.user.email || '',
+          full_name: fullName,
+          role: 'student'
         }
-
-        set({ loading: false })
+        set({ user: userData, loading: false })
       }
     } catch (error: any) {
       const errorMessage = error.message || 'Registration failed'
@@ -145,54 +96,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
       if (error) throw error
 
       if (data.session?.user) {
-        try {
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', data.session.user.id)
-
-          if (userError) {
-            console.warn('User data fetch error:', userError)
-            set({ 
-              user: {
-                id: data.session.user.id,
-                email: data.session.user.email,
-                full_name: data.session.user.user_metadata?.full_name || 'User',
-                role: 'student'
-              } as User, 
-              loading: false 
-            })
-          } else if (userData && userData.length > 0) {
-            set({ user: userData[0], loading: false })
-          } else {
-            set({ 
-              user: {
-                id: data.session.user.id,
-                email: data.session.user.email,
-                full_name: data.session.user.user_metadata?.full_name || 'User',
-                role: 'student'
-              } as User, 
-              loading: false 
-            })
-          }
-        } catch (tableError) {
-          console.warn('Error checking user table:', tableError)
-          set({ 
-            user: {
-              id: data.session.user.id,
-              email: data.session.user.email,
-              full_name: data.session.user.user_metadata?.full_name || 'User',
-              role: 'student'
-            } as User, 
-            loading: false 
-          })
+        const userData: User = {
+          id: data.session.user.id,
+          email: data.session.user.email || '',
+          full_name: data.session.user.user_metadata?.full_name || 'User',
+          role: data.session.user.user_metadata?.role || 'student'
         }
+        set({ user: userData, loading: false })
       } else {
         set({ user: null, loading: false })
       }
     } catch (error: any) {
       console.error('Auth check error:', error)
-      set({ error: error.message, loading: false })
+      set({ user: null, loading: false })
     }
   },
 }))
